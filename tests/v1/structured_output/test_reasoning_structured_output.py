@@ -11,6 +11,8 @@ from vllm.config import ModelConfig, SchedulerConfig, VllmConfig
 from vllm.v1.request import Request
 from vllm.v1.structured_output import StructuredOutputManager
 
+pytestmark = pytest.mark.skip_global_cleanup
+
 
 class MockReasoner:
     def __init__(self, tokenizer):

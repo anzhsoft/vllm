@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
+from unittest.mock import Mock
+
 import pytest
 
 from vllm.v1.structured_output.backend_xgrammar import (
+    XgrammarGrammar,
     has_xgrammar_unsupported_json_features,
 )
 
-pytestmark = pytest.mark.cpu_test
+pytestmark = [pytest.mark.cpu_test, pytest.mark.skip_global_cleanup]
 
 
 @pytest.fixture
@@ -104,3 +107,23 @@ def test_supported_json_features(supported_schema):
     assert not has_xgrammar_unsupported_json_features(supported_schema), (
         "Schema should be supported"
     )
+
+
+def test_xgrammar_accept_tokens_is_noop_after_termination():
+    matcher = Mock()
+    matcher.is_terminated.return_value = True
+    grammar = XgrammarGrammar(vocab_size=10, matcher=matcher, ctx=Mock())
+
+    assert grammar.accept_tokens("req", [1]) is True
+    assert grammar.is_terminated() is True
+    matcher.accept_token.assert_not_called()
+
+
+def test_xgrammar_accept_tokens_syncs_stale_terminated_matcher():
+    matcher = Mock()
+    matcher.is_terminated.side_effect = [False, True]
+    matcher.accept_token.return_value = False
+    grammar = XgrammarGrammar(vocab_size=10, matcher=matcher, ctx=Mock())
+
+    assert grammar.accept_tokens("req", [1]) is True
+    assert grammar.is_terminated() is True
